@@ -21,7 +21,7 @@ jobs:
     if: |
       github.event_name != 'schedule' || github.event_name == 'schedule'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check internal markdown links (relative paths only)
         uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
@@ -36,7 +36,7 @@ jobs:
     # Run external link checks on schedule only to avoid flakiness blocking PRs
     if: github.event_name == 'schedule'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check external markdown links with retries
         uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
