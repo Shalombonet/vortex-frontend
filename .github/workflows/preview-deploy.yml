@@ -3,8 +3,6 @@ name: Deploy PR Preview
 on:
   pull_request:
     types: [opened, reopened, synchronize]
-  pull_request_target:
-    types: [opened, reopened, synchronize]
 
 concurrency:
   group: preview-${{ github.event.pull_request.number }}
@@ -18,23 +16,15 @@ jobs:
   deploy-preview:
     name: Deploy to Preview
     runs-on: ubuntu-latest
+    # Fork PRs do not receive repository secrets, and must not run in a
+    # privileged pull_request_target context.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     outputs:
-      is-fork: ${{ steps.fork-check.outputs.is-fork }}
       deployment-url: ${{ steps.vercel.outputs.deployment-url }}
       deployment-success: ${{ steps.vercel.outputs.deployment-success }}
       build-timestamp: ${{ steps.build.outputs.build-timestamp }}
 
     steps:
-      - name: Check if fork PR
-        id: fork-check
-        run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "is-fork=true" >> $GITHUB_OUTPUT
-            echo "fork-owner=${{ github.event.pull_request.head.repo.owner.login }}" >> $GITHUB_OUTPUT
-          else
-            echo "is-fork=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,20 +86,8 @@ jobs:
             echo "deployment-success=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Comment on PR - Fork PR
-        if: steps.fork-check.outputs.is-fork == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### 🔗 Preview Deployment\n\n⚠️ **Fork PR detected**: Preview deployments are not available for pull requests from forks. This is a security measure to prevent exposing sensitive deployment credentials.\n\n**To review changes:**\n1. Clone the repository\n2. Checkout this PR's branch\n3. Run \`npm run dev\` locally\n4. Test with your local backend\n\nThank you for contributing! 🙏`
-            });
-
       - name: Comment on PR - Preview Ready
-        if: steps.fork-check.outputs.is-fork == 'false' && steps.vercel.outputs.deployment-success == 'true'
+        if: steps.vercel.outputs.deployment-success == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -121,7 +99,7 @@ jobs:
             });
 
       - name: Comment on PR - Deployment Failed
-        if: steps.fork-check.outputs.is-fork == 'false' && steps.vercel.outputs.deployment-success == 'false'
+        if: steps.vercel.outputs.deployment-success == 'false'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -133,7 +111,7 @@ jobs:
             });
 
       - name: Comment on PR - Credentials Missing
-        if: steps.fork-check.outputs.is-fork == 'false' && steps.vercel.outputs.deployment-url == 'CREDENTIALS_MISSING'
+        if: steps.vercel.outputs.deployment-url == 'CREDENTIALS_MISSING'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -147,7 +125,7 @@ jobs:
   preview-checks:
     name: Preview Checks (e2e, Lighthouse, visual diff)
     needs: deploy-preview
-    if: needs.deploy-preview.outputs.is-fork == 'false' && needs.deploy-preview.outputs.deployment-success == 'true'
+    if: needs.deploy-preview.outputs.deployment-success == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
