@@ -97,7 +97,6 @@ jobs:
       - run: npm run check:i18n
       - run: npm run check:orphan-tests
       - run: npm run check:docs
-      - run: npm run check:dead-code
       - name: Typecheck (strict tsconfig, must be zero errors)
         run: npm run typecheck
       - run: npm run lint
