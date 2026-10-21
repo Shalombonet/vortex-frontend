@@ -100,7 +100,6 @@ jobs:
       - name: Typecheck (strict tsconfig, must be zero errors)
         run: npm run typecheck
       - run: npm run lint
-      - run: npm run typecheck
 
   unit:
     name: Unit tests
